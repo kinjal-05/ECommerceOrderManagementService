@@ -2,6 +2,7 @@ package com.orderservice.controllers;
 
 import com.orderservice.dtos.OrderRequest;
 import com.orderservice.dtos.OrderResponse;
+import com.orderservice.dtos.UpdateAmountRequest;
 import com.orderservice.services.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -51,7 +52,7 @@ public class OrderController {
 	}
 
 	@GetMapping("${api.order.get-by-id}")
-	public ResponseEntity<OrderResponse> getById(@PathVariable Long id) {
+	public ResponseEntity<OrderResponse> getById(@RequestHeader("X-USER-ID") @PathVariable Long id) {
 		return ResponseEntity.ok(orderService.getOrderById(id));
 	}
 
@@ -88,5 +89,12 @@ public class OrderController {
 	public ResponseEntity<Void> confirmOrder(@PathVariable Long id) {
 		orderService.confirmOrder(id);
 		return ResponseEntity.noContent().build();
+	}
+
+	@PutMapping("${api.order.update-amount}")
+	public ResponseEntity<OrderResponse> updateOrderAmount(
+			@PathVariable Long id,
+			@RequestBody UpdateAmountRequest request) {
+		return ResponseEntity.ok(orderService.updateOrderAmount(id, request));
 	}
 }

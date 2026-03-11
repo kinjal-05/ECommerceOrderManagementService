@@ -2,15 +2,15 @@ package com.orderservice.servicesImpl;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import com.orderservice.commondtos.*;
-import com.orderservice.dtos.OrderItemResponse;
-import com.orderservice.dtos.OrderRequest;
-import com.orderservice.dtos.OrderResponse;
+import com.orderservice.dtos.*;
 import com.orderservice.enums.OrderStatus;
 import com.orderservice.exceptions.ResourceNotFoundException;
 import com.orderservice.feignClient.InventoryFeignClient;
 import com.orderservice.feignClient.PaymentFeignClient;
+import com.orderservice.feignClient.ProductFeignClient;
 import com.orderservice.models.Order;
 import com.orderservice.models.OrderItem;
 import com.orderservice.repositories.OrderItemRepository;
@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
+	private final ProductFeignClient productFeignClient;
 	private final OrderRepository orderRepository;
 	private final OrderItemRepository orderItemRepository;
 	private final PaymentFeignClient paymentFeignClient;
@@ -36,10 +37,12 @@ public class OrderServiceImpl implements OrderService {
 	private final StreamBridge streamBridge;
 
 	@Override
+	@CircuitBreaker(name = "orderServiceCB", fallbackMethod = "createOrderFallback")
 	public OrderResponse createOrder(Long userId, OrderRequest request) {
 		if (request.getItems() == null || request.getItems().isEmpty()) {
 			throw new RuntimeException("Order must have at least one item");
 		}
+
 		StockCheckRequest stockCheckRequest = new StockCheckRequest();
 		List<StockCheckRequest.StockItem> stockItems = request.getItems().stream().map(item -> {
 			StockCheckRequest.StockItem si = new StockCheckRequest.StockItem();
@@ -48,10 +51,12 @@ public class OrderServiceImpl implements OrderService {
 			return si;
 		}).collect(Collectors.toList());
 		stockCheckRequest.setItems(stockItems);
+
 		StockCheckResponse stockResponse = inventoryFeignClient.checkStock(stockCheckRequest);
 		if (!stockResponse.getAvailable()) {
 			throw new RuntimeException("Insufficient stock: " + stockResponse.getMessage());
 		}
+
 		StockRequest stockRequest = new StockRequest();
 		List<StockRequest.StockItem> reserveItems = request.getItems().stream().map(item -> {
 			StockRequest.StockItem si = new StockRequest.StockItem();
@@ -61,21 +66,68 @@ public class OrderServiceImpl implements OrderService {
 		}).collect(Collectors.toList());
 		stockRequest.setItems(reserveItems);
 		inventoryFeignClient.reserveStock(stockRequest);
+
+		Map<Long, Double> productPriceMap = request.getItems().stream()
+				.collect(Collectors.toMap(
+						OrderItemRequest::getProductId,
+						item -> {
+							Product product = productFeignClient.getProductById(item.getProductId());
+							if (product == null) {
+								throw new RuntimeException("Product not found with id: " + item.getProductId());
+							}
+							return product.getPrice();
+						}
+				));
+
 		Order order = orderRepository.save(
-				Order.builder().userId(userId).shippingAddress(request.getShippingAddress()).status(OrderStatus.PENDING)
-						.totalAmount(0.0).createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+				Order.builder()
+						.userId(userId)
+						.shippingAddress(request.getShippingAddress())
+						.status(OrderStatus.PENDING)
+						.totalAmount(0.0)
+						.createdAt(LocalDateTime.now())
+						.updatedAt(LocalDateTime.now())
+						.build()
+		);
+
 		List<OrderItem> items = request.getItems().stream()
-				.map(itemReq -> OrderItem.builder().productId(itemReq.getProductId()).quantity(itemReq.getQuantity())
-						.price(itemReq.getPrice()).order(order)
-						.build())
+				.map(itemReq -> {
+					Double price = productPriceMap.get(itemReq.getProductId());
+					return OrderItem.builder()
+							.productId(itemReq.getProductId())
+							.quantity(itemReq.getQuantity())
+							.price(price)
+							.order(order)
+							.build();
+				})
 				.collect(Collectors.toList());
 
-		double total = items.stream().mapToDouble(i -> i.getPrice() * i.getQuantity()).sum();
+		double total = items.stream()
+				.mapToDouble(i -> i.getPrice() * i.getQuantity())
+				.sum();
+
 		orderItemRepository.saveAll(items);
-		Order savedOrder = orderRepository.save(order.toBuilder().orderItems(items).totalAmount(total).build());
+
+		Order savedOrder = orderRepository.save(
+				order.toBuilder()
+						.orderItems(items)
+						.totalAmount(total)
+						.build()
+		);
+
 		return mapToResponse(savedOrder);
 	}
 
+	public OrderResponse createOrderFallback(Long userId, OrderRequest request, Exception ex) {
+
+		System.out.println("Circuit Breaker Triggered: " + ex.getMessage());
+
+		return OrderResponse.builder()
+				.id(null)
+				.userId(userId)
+				.status(OrderStatus.CANCELLED)
+				.build();
+	}
 	@Override
 	public void cancelOrder(Long id) {
 		Order order = orderRepository.findById(id)
@@ -116,8 +168,10 @@ public class OrderServiceImpl implements OrderService {
 		}
 	}
 
+	@Transactional
 	@Override
 	public OrderResponse getOrderById(Long id) {
+		System.out.println("KINJAL");
 		Order order = orderRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
 		return mapToResponse(order);
@@ -134,6 +188,7 @@ public class OrderServiceImpl implements OrderService {
 	}
 
 	@Override
+	@CircuitBreaker(name = "orderStatusCB", fallbackMethod = "updateOrderStatusFallback")
 	public OrderResponse updateOrderStatus(Long id, String status) {
 		Order order = orderRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
@@ -158,6 +213,15 @@ public class OrderServiceImpl implements OrderService {
 		return mapToResponse(saved);
 	}
 
+	public OrderResponse updateOrderStatusFallback(Long id, String status, Exception ex) {
+
+		System.out.println("Circuit Breaker Triggered for Order Status: " + ex.getMessage());
+
+		Order order = orderRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
+
+		return mapToResponse(order);
+	}
 	private OrderResponse mapToResponse(Order order) {
 		OrderResponse response = OrderResponse.builder().id(order.getId()).userId(order.getUserId())
 				.status(order.getStatus()).totalAmount(order.getTotalAmount())
@@ -216,5 +280,17 @@ public class OrderServiceImpl implements OrderService {
 		}).collect(Collectors.toList());
 		stockRequest.setItems(stockItems);
 		return stockRequest;
+	}
+
+	@Transactional
+	@Override
+	public OrderResponse updateOrderAmount(Long id, UpdateAmountRequest request) {
+		Order order = orderRepository.findById(id)
+				.orElseThrow(() -> new RuntimeException("Order not found: " + id));
+		order.setTotalAmount(request.getRemainingAmount());
+		order.setUpdatedAt(LocalDateTime.now());
+
+		Order saved = orderRepository.save(order);
+		return mapToResponse(saved);
 	}
 }

@@ -1,10 +1,11 @@
 api:
   order:
-    base: /api/orders
+    base: /api/orders/v1
     create: /create
-    get-by-id: /{id}
+    get-by-id: /getById/{id}
     my-orders: /myOrders
     get-all: /all
     update-status: /updateStatus/{id}
     cancel: /cancel/{id}
     confirm: /confirm/{id}
+    update-amount: /updateAmount/{id}

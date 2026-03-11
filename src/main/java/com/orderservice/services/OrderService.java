@@ -3,6 +3,7 @@ package com.orderservice.services;
 import java.util.List;
 import com.orderservice.dtos.OrderRequest;
 import com.orderservice.dtos.OrderResponse;
+import com.orderservice.dtos.UpdateAmountRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -20,4 +21,5 @@ public interface OrderService {
 	void cancelOrder(Long id);
 
 	void confirmOrder(Long orderId);
+	OrderResponse updateOrderAmount(Long id, UpdateAmountRequest request);
 }
