@@ -1,7 +1,7 @@
 package com.orderservice.dtos;
+
 import java.time.LocalDateTime;
 import java.util.List;
-
 import com.orderservice.enums.OrderStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
 @Data
 @Getter
 @Setter

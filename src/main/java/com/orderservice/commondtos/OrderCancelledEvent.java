@@ -1,7 +1,6 @@
 package com.orderservice.commondtos;
 
 import java.util.List;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,5 +14,5 @@ public class OrderCancelledEvent {
 	private Long orderId;
 	private Long userId;
 	private String reason;
-	private List<OrderItemEvent> items; // ✅ contains productId + quantity
+	private List<OrderItemEvent> items;
 }

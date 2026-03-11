@@ -1,0 +1,10 @@
+api:
+  order:
+    base: /api/orders
+    create: /create
+    get-by-id: /{id}
+    my-orders: /myOrders
+    get-all: /all
+    update-status: /updateStatus/{id}
+    cancel: /cancel/{id}
+    confirm: /confirm/{id}

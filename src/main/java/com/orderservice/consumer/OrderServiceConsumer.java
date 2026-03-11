@@ -1,9 +1,9 @@
 package com.orderservice.consumer;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-
 import com.orderservice.commondtos.OrderEvent;
 import com.orderservice.commondtos.StockRequest;
 import com.orderservice.commondtos.UserDeletedEvent;
@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j

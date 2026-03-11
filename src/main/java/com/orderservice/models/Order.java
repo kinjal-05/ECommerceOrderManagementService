@@ -1,7 +1,7 @@
 package com.orderservice.models;
+
 import java.time.LocalDateTime;
 import java.util.List;
-
 import com.orderservice.enums.OrderStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -18,6 +18,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
 @Entity
 @Table(name = "orders")
 @Getter

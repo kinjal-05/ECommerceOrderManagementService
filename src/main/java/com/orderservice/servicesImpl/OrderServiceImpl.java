@@ -1,8 +1,8 @@
 package com.orderservice.servicesImpl;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import com.orderservice.commondtos.*;
 import com.orderservice.dtos.OrderItemResponse;
 import com.orderservice.dtos.OrderRequest;
@@ -23,6 +23,7 @@ import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -65,7 +66,7 @@ public class OrderServiceImpl implements OrderService {
 						.totalAmount(0.0).createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
 		List<OrderItem> items = request.getItems().stream()
 				.map(itemReq -> OrderItem.builder().productId(itemReq.getProductId()).quantity(itemReq.getQuantity())
-						.price(itemReq.getPrice()).order(order) // ✅ order has ID now!
+						.price(itemReq.getPrice()).order(order)
 						.build())
 				.collect(Collectors.toList());
 

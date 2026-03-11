@@ -23,17 +23,14 @@ spring:
     stream:
       bindings:
 
-        # ✅ Publish order events to notification service
         orderNotification-out-0:
           destination: order-notification-topic
           content-type: application/json
 
-        # ✅ Consume user deleted event
         userDeleted-in-0:
           destination: user-deleted
           group: order-service
 
-        # ✅ Publish order cancelled event
         orderCancelled-out-0:
           destination: order-cancelled
 

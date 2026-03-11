@@ -1,10 +1,12 @@
 package com.orderservice.feignClient;
+
 import com.orderservice.commondtos.StockCheckRequest;
 import com.orderservice.commondtos.StockCheckResponse;
 import com.orderservice.commondtos.StockRequest;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+
 @FeignClient(name = "INVENTORY-SERVICE")
 public interface InventoryFeignClient {
 
